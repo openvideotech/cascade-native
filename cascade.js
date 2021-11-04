@@ -16,13 +16,22 @@
 class Cascade {
 
   constructor(localStorageId) {
+    console.log("in cascade constructor");
     this.step = 0;
     this.payee = 0;
+    this.saveable = true;
     this.originalCapPlaceHolder = null;
     this.localStorageId = localStorageId;
-    this.populateFromLocalStorage();
+    this.savedAgreement = null;
+    //this.populateFromLocalStorage();
   }
-  
+
+  init = () => {
+    console.log("cascade init");
+    this.populateFromLocalStorage();
+
+  }
+
   insertAfter = (newNode, referenceNode) => {
     referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
   }
@@ -54,15 +63,15 @@ class Cascade {
     if (month.length < 2) {
       month = '0' + month;
     }
-      
+
     if (day.length < 2) {
       day = '0' + day;
     }
 
     if (isNaN(year) || isNaN(month) || isNaN(day)) {
       return "";
-    } 
-      
+    }
+
     return [year, month, day].join('-');
   }
 
@@ -111,7 +120,7 @@ class Cascade {
       if (this.originalCapPlaceHolder !== null) {
         cap.placeholder = originalCapPlaceHolder;
       }
-    } 
+    }
     if (el.selectedIndex === 1) { // Fixed
       cap.setAttribute("disabled", true);
       cap.value = "";
@@ -130,7 +139,7 @@ class Cascade {
     } else {
       stepForm.id = `js-step${this.step}`;
     }
-    
+
     // set ids so that we can associate the step with the button clicked
 
     stepForm.querySelector(".js-trash").id = `js-trash${this.step}`;
@@ -142,12 +151,12 @@ class Cascade {
     let listItem = document.createElement("li");
     listItem.appendChild(stepForm);
 
-    // It seems that slist is designed to be called only once, 
+    // It seems that slist is designed to be called only once,
     // if you use it multiple times you need to remove the event listeners first
     // https://stackoverflow.com/questions/19469881/remove-all-event-listeners-of-specific-type
 
     let allListItems = document.querySelectorAll("#sortlist li");
-    
+
     allListItems.forEach(el => {
       el.removeAttribute("draggable");
       // Note - when cloning you lose the selectedIndex of any select box and so need to re-insert
@@ -157,7 +166,7 @@ class Cascade {
       if (selector !== null) {
         selectedIndex = el.querySelector(".js-step-type").selectedIndex;
       }
-      
+
       let elClone = el.cloneNode(true);
 
       if (selector !== null) {
@@ -181,7 +190,7 @@ class Cascade {
     let steps = document.querySelectorAll("#js-form-area .js-addstep-form");
 
     steps.forEach((el, index) => {
-      
+
       el.id = `js-step${index}`;
       el.querySelector(".js-trash").id = `js-trash${index}`;
       el.querySelector(".js-add-payee").id = `js-add${index}`;
@@ -223,7 +232,7 @@ class Cascade {
         let lastRow = rows[rows.length - 1];
         let payeeIndex = lastRow.id.replace("js-payee", "");
         let payeeTypeIndex = lastRow.querySelector(".js-payee-type").selectedIndex;
-        
+
         // checking that payee type has been selected OR that the index is undefined
         // if index undefined means that the row is fixed so we can safely add a new one
 
@@ -245,13 +254,13 @@ class Cascade {
         row.querySelector(".js-payeerow").id = `js-payee${this.payee}`;
         row.querySelector(".js-remove").id = `js-remove${this.payee}`;
         row.querySelector(".js-payee-fix").id = `js-payee-fix${this.payee}`;
-    
+
         this.payee++;
-    
+
         let tbody = table.querySelector("tbody");
         tbody.innerHTML += row.innerHTML;
       }
-      
+
     } else {
       this.showAlert("Step Type is a required field.", step);
     }
@@ -347,7 +356,7 @@ class Cascade {
 
     // type is a required field
     if (typeIndex > 0) {
-      
+
       let cap = step.querySelector(".js-step-cap").value;
       let formattedCap = "";
 
@@ -362,7 +371,7 @@ class Cascade {
 
           formattedCap = formatCurrency.format(cap);
         }
-        
+
         let description = step.querySelector(".js-step").value;
         let fixedStep = document.querySelector("#js-addstep-fixed-template").cloneNode(true);
 
@@ -426,9 +435,9 @@ class Cascade {
     stepForm.querySelector(".js-step").setAttribute('value', description);
 
     if (cap.length > 0) {
-      stepForm.querySelector(".js-step-cap").setAttribute('value', cap); 
+      stepForm.querySelector(".js-step-cap").setAttribute('value', cap);
     }
-    
+
     let select = stepForm.querySelector(".js-step-type");
     select.options[stepTypeIndex].setAttribute('selected', "true");
 
@@ -442,14 +451,14 @@ class Cascade {
     }
   }
 
-  saveAgreement = () => {
+  saveAgreement = (final) => {
 
     const currencyIndex = document.querySelector("#currency").selectedIndex;
-    let saveable = true;
-    
+    this.saveable = true;
+
     if (currencyIndex > 0) {
 
-      let savedAgreement = new Agreement(
+      this.savedAgreement = new Agreement(
         document.querySelector("#name").value,
         document.querySelector("#currency").value,
         document.querySelector("#pointer").value,
@@ -458,17 +467,17 @@ class Cascade {
         document.querySelector("#description").value
       );
 
-      savedAgreement.addLimit(
+      this.savedAgreement.addLimit(
         document.querySelector("#period-repeat").value,
         document.querySelector("#period-unit").value,
-        this.formatDate(new Date(document.querySelector("#start").value)), 
+        this.formatDate(new Date(document.querySelector("#start").value)),
         this.formatDate(new Date(document.querySelector("#end").value))
       );
 
       const steps = document.querySelectorAll(".js-addstep-form");
 
       steps.forEach((step, index) => {
-        
+
         // ignore the step template (which doesn't have an id)
         if (step.id.startsWith("js-step") === true) {
 
@@ -476,7 +485,7 @@ class Cascade {
 
           let saveStepSuccess = true;
           const inputs = step.querySelectorAll("input");
-          
+
           if (inputs.length > 0) { // Step has open inputs
             const el = {
               id: index + ""
@@ -485,8 +494,8 @@ class Cascade {
             saveStepSuccess = this.saveStep(el);
           }
 
-          if (saveable === true) {
-            saveable = saveStepSuccess;
+          if (this.saveable === true) {
+            this.saveable = saveStepSuccess;
           }
 
           if (saveStepSuccess === true) {
@@ -509,28 +518,47 @@ class Cascade {
               agreementStep.addPayee(agreementPayee);
             });
 
-            savedAgreement.addStep(agreementStep);
-          } 
+            this.savedAgreement.addStep(agreementStep);
+          }
         }
       });
 
       // save to localStorage
 
-      if (saveable === true) {
-        localStorage.setItem(this.localStorageId, JSON.stringify(savedAgreement));
-      } 
+      if (this.saveable === true) {
+        //localStorage.setItem(this.localStorageId, JSON.stringify(savedAgreement));
+        this.performSave(final);
+      }
     } else {
       this.showAlert("Currency is a required field.", document.querySelector("#sortlist"));
     }
   }
 
-  populateFromLocalStorage = () => {
+  // final parameter not used here, but required for some extensions of this class with overidden method
+  performSave(final) {
+    localStorage.setItem(this.localStorageId, JSON.stringify(this.savedAgreement));
+  }
+
+  populateFromLocalStorage = (savedAgreement) => {
+
+    console.log("in cascade populateFromLocalstorage");
+    console.log(savedAgreement);
 
     // The way we recreate the agreement from localStorage is to actually
     // recreate all the forms, populate them and save them.
     // The idea is to reuse existing functions.
+    
+    let agreement = null;
 
-    let agreement = JSON.parse(localStorage.getItem(this.localStorageId));
+    if (savedAgreement !== null) {
+
+      agreement = savedAgreement;      
+    
+    } else {
+
+      agreement = JSON.parse(localStorage.getItem(this.localStorageId));
+
+    }
 
     if (agreement !== null) {
       document.querySelector("#name").value = agreement.name;
@@ -557,15 +585,15 @@ class Cascade {
           if (step.type === "fixed") {
             form.querySelector(".js-step-cap").setAttribute("disabled", true);
           } else {
-            form.querySelector(".js-step-cap").value = step.cap; 
+            form.querySelector(".js-step-cap").value = step.cap;
           }
-          
+
           step.payees.forEach(payee => {
             this.addPayee(form.querySelector(".js-add-payee"));
             const payeeForm = document.querySelectorAll(".js-payeerow")[payeeIndex];
 
             payeeIndex++;
-    
+
             payeeForm.querySelector(".js-payee-name").value = payee.name;
             payeeForm.querySelector(".js-payee-ac").value = payee.paymentAddress;
 
@@ -579,7 +607,7 @@ class Cascade {
           this.saveStep(form.querySelector(".js-save-step"));
         });
       }
-    } 
+    }
   }
 
   sanitise = (str) => {
@@ -627,7 +655,7 @@ class Cascade {
       if (agreement.description.length > 0) {
         rsml.append(`description: ${this.sanitise(agreement.description)}\n`);
       }
-      
+
       if (agreement.address.length > 0) {
         rsml.append(`pointer: ${this.sanitise(agreement.address)}\n`);
       }
@@ -659,7 +687,7 @@ class Cascade {
       if (agreement.steps.length > 0) {
         rsml.append(`steps:\n`);
         agreement.steps.forEach(step => {
-          
+
           rsml.append(`-\n  type: ${this.sanitise(step.type)}\n`);
 
           if (step.description.length > 0) {
@@ -680,7 +708,7 @@ class Cascade {
         });
       }
       document.querySelector("#agreement").style.display = "block";
-    } 
+    }
   }
 
   showAlert = (message, container) => {
@@ -821,5 +849,3 @@ function slist(target) {
   }
 }
 
-//initialise
-let agreement = new Cascade("MOVA-Agreement-JSON");
